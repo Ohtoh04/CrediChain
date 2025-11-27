@@ -1,0 +1,125 @@
+<!-- loans-list.html -->
+<div class="loans-list-container">
+  <div class="loans-header">
+    <h1>Available Loans</h1>
+    <div class="header-actions">
+      @if(publicKey) {
+      <button mat-raised-button color="primary" [routerLink]="['/create-loan']">Create Loan</button>
+      }
+    </div>
+  </div>
+
+  <div class="filters-content">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Status</mat-label>
+      <mat-select [formControl]="statusFilter" multiple>
+        <mat-option value="OPEN">Open</mat-option>
+        <mat-option value="FUNDED">Funded</mat-option>
+        <mat-option value="REPAID">Repaid</mat-option>
+        <mat-option value="DEFAULTED">Defaulted</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  @if (loading()) {
+  <div class="loading-state">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading loans...</p>
+  </div>
+  }
+
+  @if (error()) {
+  <div class="error-state">
+    <mat-icon color="warn">error_outline</mat-icon>
+    <h3>Failed to load loans</h3>
+    <p>{{ error() }}</p>
+    <button mat-raised-button color="primary" (click)="loadLoans()">Try Again</button>
+  </div>
+  }
+
+  @if (!loading() && !error() && filteredLoans().length === 0) {
+  <div class="empty-state">
+    <mat-icon>search_off</mat-icon>
+    <h3>No loans found</h3>
+    <p>Try adjusting your filters or create a new loan</p>
+    @if (publicKey) {
+    <button mat-raised-button color="primary" [routerLink]="['/create-loan']">
+      Create First Loan
+    </button>
+    }
+  </div>
+  }
+
+  @if (!loading() && filteredLoans().length > 0) {
+  <div class="loans-grid">
+    @for (loan of filteredLoans(); track loan.id) {
+    <mat-card class="loan-card">
+      <mat-card-header>
+        <mat-card-title>Loan #{{ loan.id.slice(0, 8) }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ loan.amount }} SOL • {{ loan.interestRate }}% APR
+        </mat-card-subtitle>
+        <div class="status-badge" [class]="'status-' + loan.status.toLowerCase()">
+          {{ loan.status }}
+        </div>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="loan-details">
+          <div class="detail-row">
+            <span class="label">Borrower:</span>
+            <span class="value">{{ loan.borrower.publicKey | truncate : 12 }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Duration:</span>
+            <span class="value">{{ loan.durationDays }} days</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Funded:</span>
+            <span class="value">{{ loan.fundedAmount }} / {{ loan.amount }} SOL</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Due Date:</span>
+            <span class="value">{{ loan.dueDate | date : 'shortDate' }}</span>
+          </div>
+          @if (loan.collateral) {
+          <div class="detail-row">
+            <span class="label">Collateral:</span>
+            <span class="value collateral">{{ loan.collateral | truncate : 20 }}</span>
+          </div>
+          }
+        </div>
+
+        <div class="funding-progress">
+          <mat-progress-bar [value]="(loan.fundedAmount / loan.amount) * 100" mode="determinate">
+          </mat-progress-bar>
+          <span class="progress-text">
+            {{ ((loan.fundedAmount / loan.amount) * 100).toFixed(0) }}% funded
+          </span>
+        </div>
+      </mat-card-content>
+
+      <mat-card-actions align="end">
+        <button mat-button color="accent" [routerLink]="['/loan', loan.id]">View Details</button>
+
+        @if (loan.status === 'OPEN' && publicKey && loan.borrower.publicKey !==
+        publicKey.toString()) {
+        <button mat-raised-button color="primary" (click)="fundLoan(loan)">Fund Loan</button>
+        } @if (loan.status === 'FUNDED' && publicKey && loan.borrower.publicKey ===
+        publicKey.toString()) {
+        <button mat-raised-button color="accent" (click)="repayLoan(loan)">Repay</button>
+        }
+      </mat-card-actions>
+    </mat-card>
+    }
+  </div>
+  }
+
+  @if (filteredLoans().length > 0) {
+  <div class="pagination">
+    <button mat-button [disabled]="currentPage === 1" (click)="previousPage()">Previous</button>
+    <span class="page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
+    <button mat-button [disabled]="currentPage >= totalPages()" (click)="nextPage()">Next</button>
+  </div>
+  }
+</div>

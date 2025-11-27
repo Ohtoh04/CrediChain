@@ -1,0 +1,127 @@
+<mat-card class="profile-card">
+  <mat-toolbar class="card-toolbar"><b>Wallet Profile</b></mat-toolbar>
+
+  <div class="profile-content">
+    @if (!publicKey) {
+    <p>No wallet connected.</p>
+    } @if (publicKey) {
+    <p><strong>Public Key:</strong> {{ publicKey.toString() }}</p>
+    } @if (error()) {
+    <p class="error">{{ error() }}</p>
+    } @if (!publicKey) {
+    <button mat-raised-button color="primary" (click)="connectWallet()">Connect Phantom</button>
+    } @if (publicKey) {
+    <button mat-raised-button color="warn" (click)="disconnectWallet()">Disconnect</button>
+    }
+  </div>
+</mat-card>
+
+<div class="loan-cards-wrapper">
+  <!-- Loans Section -->
+  <mat-card class="loans-card">
+    <mat-toolbar class="card-toolbar"><b>Borrowed Loans</b></mat-toolbar>
+
+    <div class="loans-content">
+      @if (borrowedLoans().length === 0) {
+      <p class="no-loans">No loans found</p>
+      } @else {
+      <div class="loans-grid">
+        @for (loan of borrowedLoans(); track loan.id) {
+        <mat-card class="loan-card">
+          <mat-card-header>
+            <mat-card-title>Loan #{{ loan.id.slice(0, 8) }}</mat-card-title>
+            <mat-card-subtitle>
+              {{ loan.amount }} SOL • {{ loan.interestRate }}% APR
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="loan-details">
+              <p><strong>Duration:</strong> {{ loan.durationDays }} days</p>
+              <p><strong>Funded:</strong> {{ loan.fundedAmount }} / {{ loan.amount }} SOL</p>
+              <p>
+                <strong>Status:</strong>
+                <span [class]="'status-' + loan.status.toLowerCase()">
+                  {{ loan.status }}
+                </span>
+              </p>
+              <p><strong>Due Date:</strong> {{ loan.dueDate | date }}</p>
+              @if (loan.collateral) {
+              <p><strong>Collateral:</strong> {{ loan.collateral }}</p>
+              }
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            @if (loan.status === 'OPEN') {
+            <button mat-button color="primary">Fund Loan</button>
+            }
+            <button mat-button color="accent" [routerLink]="['/loan', loan.id]">
+              View Details
+            </button>
+            @if (loan.status === 'REPAID') {
+            <button mat-button color="primary">View Receipt</button>
+            }
+          </mat-card-actions>
+        </mat-card>
+        }
+      </div>
+      }
+    </div>
+  </mat-card>
+</div>
+
+<div class="loan-cards-wrapper">
+  <!-- Loans Section -->
+  <mat-card class="loans-card">
+    <mat-toolbar class="card-toolbar"><b>Invested Loans</b></mat-toolbar>
+
+    <div class="loans-content">
+      @if (investedLoans().length === 0) {
+      <p class="no-loans">No loans found</p>
+      } @else {
+      <div class="loans-grid">
+        @for (loan of investedLoans(); track loan.id) {
+        <mat-card class="loan-card">
+          <mat-card-header>
+            <mat-card-title>Loan #{{ loan.id.slice(0, 8) }}</mat-card-title>
+            <mat-card-subtitle>
+              {{ loan.amount }} SOL • {{ loan.interestRate }}% APR
+            </mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="loan-details">
+              <p><strong>Duration:</strong> {{ loan.durationDays }} days</p>
+              <p><strong>Funded:</strong> {{ loan.fundedAmount }} / {{ loan.amount }} SOL</p>
+              <p>
+                <strong>Status:</strong>
+                <span [class]="'status-' + loan.status.toLowerCase()">
+                  {{ loan.status }}
+                </span>
+              </p>
+              <p><strong>Due Date:</strong> {{ loan.dueDate | date }}</p>
+              @if (loan.collateral) {
+              <p><strong>Collateral:</strong> {{ loan.collateral }}</p>
+              }
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions>
+            @if (loan.status === 'OPEN') {
+            <button mat-button color="primary">Fund Loan</button>
+            }
+            <button mat-button color="accent" [routerLink]="['/loan', loan.id]">
+              View Details
+            </button>
+            @if (loan.status === 'REPAID') {
+            <button mat-button color="primary">View Receipt</button>
+            }
+          </mat-card-actions>
+        </mat-card>
+        }
+      </div>
+      }
+    </div>
+  </mat-card>
+</div>

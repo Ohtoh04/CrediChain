@@ -1,0 +1,49 @@
+.powered-section {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-left: 20%;
+
+  .powered-by {
+    font-size: 2rem;
+    font-weight: 500;
+    margin-right: 3px;
+
+    a {
+      color: #00ffa3;
+      text-decoration: none;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00ffa3, #14f0ff);
+      background-clip: text;
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+  }
+
+  .footer-button {
+    height: 40px;
+    width: 120px;
+    border-radius: 20px;
+    background: linear-gradient(90deg, #00ffa3, #14f0ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+    text-decoration: none;
+    color: rgb(31, 31, 31);
+    font-size: 16px;
+    font-weight: 500;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+
+    a {
+      font-weight: 700;
+      background: linear-gradient(90deg, #00ffa3, #14f0ff);
+    }
+  }
+}

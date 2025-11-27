@@ -1,0 +1,126 @@
+<!-- loan-details.html -->
+<div class="loan-details-container">
+  <mat-card class="loan-details-card">
+    <mat-card-header>
+      <mat-card-title>Loan Details</mat-card-title>
+      <mat-card-subtitle>Loan #{{ loan()?.id }}</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      @if (loading()) {
+        <div class="loading-spinner">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>Loading loan details...</p>
+        </div>
+      }
+
+      @if (error()) {
+        <div class="error-message">
+          <mat-icon color="warn">error_outline</mat-icon>
+          <p>{{ error() }}</p>
+          <button mat-raised-button color="primary" (click)="loadLoanDetails()">
+            Retry
+          </button>
+        </div>
+      }
+
+      @if (loan(); as loanData) {
+        <div class="loan-info">
+          <div class="info-section">
+            <h3>Basic Information</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Amount:</span>
+                <span class="value">{{ loanData.amount }} SOL</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Interest Rate:</span>
+                <span class="value">{{ loanData.interestRate }}%</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Duration:</span>
+                <span class="value">{{ loanData.durationDays }} days</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Funded:</span>
+                <span class="value">{{ loanData.fundedAmount }} / {{ loanData.amount }} SOL</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3>Status & Timeline</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Status:</span>
+                <span class="value status" [class]="'status-' + loanData.status.toLowerCase()">
+                  {{ loanData.status }}
+                </span>
+              </div>
+              <div class="info-item">
+                <span class="label">Created:</span>
+                <span class="value">{{ loanData.createdAt | date:'medium' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Due Date:</span>
+                <span class="value">{{ loanData.dueDate | date:'medium' }}</span>
+              </div>
+              @if (loanData.collateral) {
+                <div class="info-item">
+                  <span class="label">Collateral:</span>
+                  <span class="value">{{ loanData.collateral }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="info-section">
+            <h3>Borrower</h3>
+            <div class="user-info">
+              <mat-icon>person</mat-icon>
+              <div class="user-details">
+                <span class="public-key">{{ loanData.borrower.publicKey | truncate: 20 }}</span>
+                <span class="reputation">Reputation: {{ loanData.borrower.reputationScore }}/100</span>
+              </div>
+            </div>
+          </div>
+
+          @if (loanData.investors && loanData.investors.length > 0) {
+            <div class="info-section">
+              <h3>Investors ({{ loanData.investors.length }})</h3>
+              <div class="investors-list">
+                @for (investor of loanData.investors; track investor.publicKey) {
+                  <div class="investor-item">
+                    <mat-icon>account_circle</mat-icon>
+                    <div class="investor-details">
+                      <span class="public-key">{{ investor.publicKey | truncate: 16 }}</span>
+                      <span class="reputation">Score: {{ investor.reputationScore }}</span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      @if (loan(); as loanData) {
+        <button mat-button (click)="goBack()">Back</button>
+        
+        @if (loanData.status === 'OPEN') {
+          <button mat-raised-button color="primary" (click)="fundLoan(loanData.id)">
+            Fund Loan
+          </button>
+        }
+        
+        @if (loanData.status === 'FUNDED' && isBorrower()) {
+          <button mat-raised-button color="accent" (click)="repayLoan(loanData.id)">
+            Repay Loan
+          </button>
+        }
+      }
+    </mat-card-actions>
+  </mat-card>
+</div>

@@ -1,0 +1,65 @@
+.welcome-block {
+  position: absolute;
+  top: 50%;
+  left: 20%;
+  transform: translateY(-50%);
+  max-width: 500px;
+  animation: slideIn 1s ease forwards;
+
+  h2 {
+    font-size: 2rem;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+    font-weight: bold;
+
+    .highlight {
+      background: linear-gradient(90deg, #ff6ec7, #4a00e0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 900;
+    }
+  }
+
+  p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+  }
+
+  a {
+    padding: 0.8rem 1.8rem;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+    background: linear-gradient(90deg, #ff6ec7, #4a00e0);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition:
+      transform 0.3s ease,
+      box-shadow 0.3s ease;
+    text-decoration: none;
+
+    &:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+::ng-deep {
+  .powered-section {
+    position: absolute;
+    bottom: 20px;
+  }
+}
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(100%) translateY(-50%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(-50%);
+  }
+}
