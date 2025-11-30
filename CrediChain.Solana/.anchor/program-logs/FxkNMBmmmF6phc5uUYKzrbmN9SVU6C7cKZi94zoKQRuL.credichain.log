@@ -1,0 +1,57 @@
+Transaction executed in slot 7:
+  Signature: 2dYSxwQtTFdSAFLM88fuToujG9y7fkCx5g2X12JquLGLyWyMRFj4NwXaEscewsdz2Fhx3eQGDx3iMohogHZfxzGk
+  Status: Ok
+  Log Messages:
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL invoke [1]
+    Program log: Instruction: CreateLoan
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL consumed 11012 of 200000 compute units
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL success
+
+Transaction executed in slot 9:
+  Signature: 5xXQU3JB6zfSHBRWU7Pbpg9vZRHp6w4MMGEsThfdRh6q1wywvABdDTJHnqXVoUpdMrbyWgCWSbWaPrxio9bjz2h5
+  Status: Ok
+  Log Messages:
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL invoke [1]
+    Program log: Instruction: FundLoan
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL consumed 6791 of 200000 compute units
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL success
+
+Transaction executed in slot 10:
+  Signature: 3BdGknhdcsoT3WPHjZ6i5G7FQwaST3xNHY88mHaf4AkyodjqgK6kwxT6dyt7cRGzxgiL3QTTp1KXxFkBhjNCLCPu
+  Status: Ok
+  Log Messages:
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL invoke [1]
+    Program log: Instruction: FundLoan
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL consumed 7414 of 200000 compute units
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL success
+
+Transaction executed in slot 11:
+  Signature: 3BdGknhdcsoT3WPHjZ6i5G7FQwaST3xNHY88mHaf4AkyodjqgK6kwxT6dyt7cRGzxgiL3QTTp1KXxFkBhjNCLCPu
+  Status: Ok
+  Log Messages:
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL invoke [1]
+    Program log: Instruction: FundLoan
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL consumed 7414 of 200000 compute units
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL success
+
+Transaction executed in slot 13:
+  Signature: 2NemiS2pD4pKbeewXLEZA3ryW6LxRi8iR78o7o9kqQ7rJnAdqnGZx5xgTfJqEJmk6SR5tAXg6iP5JoiUvk5XFsKQ
+  Status: Ok
+  Log Messages:
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL invoke [1]
+    Program log: Instruction: RepayLoan
+    Program 11111111111111111111111111111111 invoke [2]
+    Program 11111111111111111111111111111111 success
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL consumed 8112 of 200000 compute units
+    Program FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL success
+
