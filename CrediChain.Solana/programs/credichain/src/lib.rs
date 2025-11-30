@@ -15,7 +15,7 @@ pub mod credichain {
         duration_seconds: i64,
     ) -> Result<()> {
         require!(total_amount > 0, LoanError::InvalidAmount);
-        require!(interest_bps <= 10_000, LoanError::InvalidAmount); // Max 100%
+        require!(interest_bps <= 10_000, LoanError::InvalidAmount);
 
         let loan = &mut ctx.accounts.loan;
 
@@ -38,20 +38,23 @@ pub mod credichain {
         Ok(())
     }
 
-    pub fn fund_loan(ctx: Context<FundLoan>, amount: u64) -> Result<()> {
+    pub fn fund_loan<'info>(
+        ctx: Context<'_, '_, 'info, 'info, FundLoan<'info>>,
+        amount: u64,
+    ) -> Result<()> {
         require!(amount > 0, LoanError::InvalidAmount);
 
         let loan = &mut ctx.accounts.loan;
         require!(loan.status == LoanStatus::Open, LoanError::InvalidStatus);
 
         let remaining_needed = loan.total_amount - loan.funded_amount;
-        let contribute_amount = amount.min(remaining_needed); // Prevent overfunding
+        let contribute_amount = amount.min(remaining_needed);
         require!(contribute_amount > 0, LoanError::InvalidAmount);
 
         let lender = ctx.accounts.lender.key();
         require!(lender != loan.borrower, LoanError::SelfFunding);
 
-        // Transfer lender → escrow via CPI (since lender is system-owned)
+        // Transfer lender → escrow via CPI
         let cpi_accounts = anchor_lang::system_program::Transfer {
             from: ctx.accounts.lender.to_account_info(),
             to: ctx.accounts.escrow.to_account_info(),
@@ -78,7 +81,7 @@ pub mod credichain {
             loan.start_ts = now;
             loan.due_ts = now + loan.duration;
 
-            // Disburse loan amount from escrow to borrower (direct ok: debit PDA, credit user)
+            // Disburse loan amount from escrow to borrower
             **ctx.accounts.escrow.to_account_info().try_borrow_mut_lamports()? -= loan.total_amount;
             **ctx.accounts.borrower.to_account_info().try_borrow_mut_lamports()? += loan.total_amount;
         }
@@ -86,7 +89,10 @@ pub mod credichain {
         Ok(())
     }
 
-    pub fn repay_loan(ctx: Context<RepayLoan>, repay_amount: u64) -> Result<()> {
+    pub fn repay_loan<'info>(
+        ctx: Context<'_, '_, 'info, 'info, RepayLoan<'info>>,
+        repay_amount: u64,
+    ) -> Result<()> {
         require!(repay_amount > 0, LoanError::InvalidAmount);
 
         let loan = &mut ctx.accounts.loan;
@@ -97,37 +103,51 @@ pub mod credichain {
         let expected_total = loan.total_amount + interest;
         require!(repay_amount >= expected_total, LoanError::InsufficientRepayment);
 
-        // Borrower transfers repay → escrow via CPI (since borrower is system-owned)
+        // Borrower transfers repay → escrow via CPI
         let cpi_accounts = anchor_lang::system_program::Transfer {
             from: ctx.accounts.borrower.to_account_info(),
             to: ctx.accounts.escrow.to_account_info(),
         };
         let cpi_program = ctx.accounts.system_program.to_account_info();
-        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        let cpi_ctx = CpiContext::new(cpi_program.clone(), cpi_accounts);
         anchor_lang::system_program::transfer(cpi_ctx, repay_amount)?;
 
-        let total_funded = loan.funded_amount as u128; // Should == total_amount now
+        let total_funded = loan.funded_amount as u128;
+        let now = Clock::get()?.unix_timestamp;
 
-        // Proportional distribution to lenders (principal + interest; direct ok: debit PDA, credit users)
-        for (i, lender_pk) in loan.lenders.iter().enumerate() {
-            let share = (repay_amount as u128 * loan.lenders_amounts[i] as u128) / total_funded;
+        // Clone lenders data to avoid borrowing issues
+        let lenders = loan.lenders.clone();
+        let lenders_amounts = loan.lenders_amounts.clone();
+
+        // Distribute repayment to lenders
+        for (i, lender_pk) in lenders.iter().enumerate() {
+            let share = (repay_amount as u128 * lenders_amounts[i] as u128) / total_funded;
             let share_u64 = share as u64;
 
             let lender_info = ctx.remaining_accounts[i].to_account_info();
             require!(lender_info.key == lender_pk, LoanError::MissingLenderAccount);
 
+            // Transfer share from escrow to lender
             **ctx.accounts.escrow.to_account_info().try_borrow_mut_lamports()? -= share_u64;
             **lender_info.try_borrow_mut_lamports()? += share_u64;
         }
 
-        loan.status = LoanStatus::Repaid;
-        loan.repaid_ts = Clock::get()?.unix_timestamp;
+        // Reborrow loan for status update
+        let loan = &mut ctx.accounts.loan;
+        
+        // Determine whether loan is repaid on time or late
+        if now <= loan.due_ts {
+            loan.status = LoanStatus::RepaidOnTime;
+        } else {
+            loan.status = LoanStatus::RepaidLate;
+        }
+
+        loan.repaid_ts = now;
 
         Ok(())
     }
 }
 
-/// PDA with no data — used only to hold lamports
 #[account]
 pub struct Escrow {}
 
@@ -136,19 +156,14 @@ pub struct Loan {
     pub borrower: Pubkey,
     pub total_amount: u64,
     pub funded_amount: u64,
-
     pub interest_bps: u16,
     pub duration: i64,
-
     pub start_ts: i64,
     pub due_ts: i64,
     pub repaid_ts: i64,
-
     pub status: LoanStatus,
-
     pub lenders: Vec<Pubkey>,
     pub lenders_amounts: Vec<u64>,
-
     pub escrow_bump: u8,
 }
 
@@ -156,12 +171,13 @@ pub struct Loan {
 pub enum LoanStatus {
     Open,
     Funded,
-    Repaid,
+    RepaidOnTime,
+    RepaidLate,
 }
 
 #[derive(Accounts)]
 pub struct CreateLoan<'info> {
-    #[account(init, payer = borrower, space = 8 + 500)] // Adjust space if needed for vec growth
+    #[account(init, payer = borrower, space = 8 + 500)]
     pub loan: Account<'info, Loan>,
 
     #[account(
@@ -194,11 +210,11 @@ pub struct FundLoan<'info> {
     #[account(mut)]
     pub lender: Signer<'info>,
 
+    /// CHECK: Validated by address constraint
     #[account(mut, address = loan.borrower)]
-    /// CHECK: This is the borrower's account. It's only used for receiving lamports during disbursement and is constrained by the `address = loan.borrower` which ensures it matches the verified borrower from the Loan account.
-    pub borrower: AccountInfo<'info>,  // For disbursement
+    pub borrower: AccountInfo<'info>,
 
-    pub system_program: Program<'info, System>,  // Added for CPI transfer
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -216,7 +232,7 @@ pub struct RepayLoan<'info> {
     #[account(mut, address = loan.borrower)]
     pub borrower: Signer<'info>,
 
-    pub system_program: Program<'info, System>,  // Added for CPI transfer
+    pub system_program: Program<'info, System>,
 }
 
 #[error_code]
