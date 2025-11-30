@@ -1,0 +1,342 @@
+{
+  "address": "FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL",
+  "metadata": {
+    "name": "credichain",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "create_loan",
+      "discriminator": [
+        166,
+        131,
+        118,
+        219,
+        138,
+        218,
+        206,
+        140
+      ],
+      "accounts": [
+        {
+          "name": "loan",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "loan"
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "total_amount",
+          "type": "u64"
+        },
+        {
+          "name": "interest_bps",
+          "type": "u16"
+        },
+        {
+          "name": "duration_seconds",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "fund_loan",
+      "discriminator": [
+        50,
+        221,
+        51,
+        13,
+        3,
+        142,
+        116,
+        215
+      ],
+      "accounts": [
+        {
+          "name": "loan",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "loan"
+              }
+            ]
+          }
+        },
+        {
+          "name": "lender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "borrower",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "repay_loan",
+      "discriminator": [
+        224,
+        93,
+        144,
+        77,
+        61,
+        17,
+        137,
+        54
+      ],
+      "accounts": [
+        {
+          "name": "loan",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "loan"
+              }
+            ]
+          }
+        },
+        {
+          "name": "borrower",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "repay_amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Escrow",
+      "discriminator": [
+        31,
+        213,
+        123,
+        187,
+        186,
+        22,
+        218,
+        155
+      ]
+    },
+    {
+      "name": "Loan",
+      "discriminator": [
+        20,
+        195,
+        70,
+        117,
+        165,
+        227,
+        182,
+        1
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAmount"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidStatus"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyLenders"
+    },
+    {
+      "code": 6003,
+      "name": "SelfFunding"
+    },
+    {
+      "code": 6004,
+      "name": "InsufficientRepayment"
+    },
+    {
+      "code": 6005,
+      "name": "MissingLenderAccount"
+    }
+  ],
+  "types": [
+    {
+      "name": "Escrow",
+      "docs": [
+        "PDA with no data — used only to hold lamports"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "Loan",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "borrower",
+            "type": "pubkey"
+          },
+          {
+            "name": "total_amount",
+            "type": "u64"
+          },
+          {
+            "name": "funded_amount",
+            "type": "u64"
+          },
+          {
+            "name": "interest_bps",
+            "type": "u16"
+          },
+          {
+            "name": "duration",
+            "type": "i64"
+          },
+          {
+            "name": "start_ts",
+            "type": "i64"
+          },
+          {
+            "name": "due_ts",
+            "type": "i64"
+          },
+          {
+            "name": "repaid_ts",
+            "type": "i64"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "LoanStatus"
+              }
+            }
+          },
+          {
+            "name": "lenders",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "lenders_amounts",
+            "type": {
+              "vec": "u64"
+            }
+          },
+          {
+            "name": "escrow_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LoanStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Open"
+          },
+          {
+            "name": "Funded"
+          },
+          {
+            "name": "Repaid"
+          }
+        ]
+      }
+    }
+  ]
+}

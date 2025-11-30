@@ -3,7 +3,7 @@
   <div class="loans-header">
     <h1>Available Loans</h1>
     <div class="header-actions">
-      @if(publicKey) {
+      @if(publicKey()) {
       <button mat-raised-button color="primary" [routerLink]="['/create-loan']">Create Loan</button>
       }
     </div>
@@ -21,36 +21,30 @@
     </mat-form-field>
   </div>
 
-  @if (loading()) {
+  @if(publicKey()) { @if (loading()) {
   <div class="loading-state">
     <mat-spinner diameter="50"></mat-spinner>
     <p>Loading loans...</p>
   </div>
-  }
-
-  @if (error()) {
+  } @if (error()) {
   <div class="error-state">
     <mat-icon color="warn">error_outline</mat-icon>
     <h3>Failed to load loans</h3>
     <p>{{ error() }}</p>
     <button mat-raised-button color="primary" (click)="loadLoans()">Try Again</button>
   </div>
-  }
-
-  @if (!loading() && !error() && filteredLoans().length === 0) {
+  } @if (!loading() && !error()) {
   <div class="empty-state">
-    <mat-icon>search_off</mat-icon>
+    <mat-icon>:/</mat-icon>
     <h3>No loans found</h3>
     <p>Try adjusting your filters or create a new loan</p>
-    @if (publicKey) {
+    @if (publicKey()) {
     <button mat-raised-button color="primary" [routerLink]="['/create-loan']">
       Create First Loan
     </button>
     }
   </div>
-  }
-
-  @if (!loading() && filteredLoans().length > 0) {
+  } @if (!loading()) {
   <div class="loans-grid">
     @for (loan of filteredLoans(); track loan.id) {
     <mat-card class="loan-card">
@@ -102,10 +96,10 @@
       <mat-card-actions align="end">
         <button mat-button color="accent" [routerLink]="['/loan', loan.id]">View Details</button>
 
-        @if (loan.status === 'OPEN' && publicKey && loan.borrower.publicKey !==
+        @if (loan.status === 'OPEN' && publicKey() && loan.borrower.publicKey !==
         publicKey.toString()) {
         <button mat-raised-button color="primary" (click)="fundLoan(loan)">Fund Loan</button>
-        } @if (loan.status === 'FUNDED' && publicKey && loan.borrower.publicKey ===
+        } @if (loan.status === 'FUNDED' && publicKey() && loan.borrower.publicKey ===
         publicKey.toString()) {
         <button mat-raised-button color="accent" (click)="repayLoan(loan)">Repay</button>
         }
@@ -113,13 +107,13 @@
     </mat-card>
     }
   </div>
-  }
-
-  @if (filteredLoans().length > 0) {
+  } @if (filteredLoans().length > 0) {
   <div class="pagination">
     <button mat-button [disabled]="currentPage === 1" (click)="previousPage()">Previous</button>
     <span class="page-info">Page {{ currentPage }} of {{ totalPages() }}</span>
     <button mat-button [disabled]="currentPage >= totalPages()" (click)="nextPage()">Next</button>
   </div>
+  } } @else {
+  <p>Please, connect the wallet</p>
   }
 </div>

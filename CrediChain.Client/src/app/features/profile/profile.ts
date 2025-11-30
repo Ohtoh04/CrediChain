@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -15,25 +15,27 @@ import { RouterLink } from '@angular/router';
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
-export class MyProfile implements OnInit {
+export class MyProfile {
   private readonly walletService = inject(PhantomWalletService);
   private readonly loanManagementService = inject(LoanManagementService);
 
-  publicKey: PublicKey | null = new PublicKey('11111111111111111111111111111111');
+  publicKey = this.walletService.publicKey;
   error = signal<string | null>(null);
 
   borrowedLoans = signal<Loan[]>([]);
   investedLoans = signal<Loan[]>([]);
 
-  ngOnInit(): void {
-    this.loadBorrowedLoans();
-    this.loadInvestedLoans();
+  constructor() {
+    effect(() => {
+      this.loadBorrowedLoans();
+      this.loadInvestedLoans();
+    });
   }
 
   async connectWallet() {
     this.error.set(null);
     try {
-      this.publicKey = (await this.walletService.connect())();
+      await this.walletService.connect();
     } catch (err: any) {
       this.error.set(err.message || 'Failed to connect');
     }
@@ -41,24 +43,30 @@ export class MyProfile implements OnInit {
 
   async disconnectWallet() {
     await this.walletService.disconnect();
-    this.publicKey = null;
   }
 
   private loadBorrowedLoans() {
-    if (!this.publicKey) return;
+    if (!this.publicKey()) return;
 
-    this.loanManagementService.getLoansMock(this.publicKey.toString(), 'borrowed').subscribe({
+    this.loanManagementService.getLoans(this.publicKey()!.toString(), 'borrowed').subscribe({
       next: (res) => this.borrowedLoans.set(res),
-      error: (_) => this.error.set(`Failed loading loans`),
+      error: (error) => {
+        console.log("Failed loading borrowed loans: ", error);
+        console.log("Failed loading borrowed loans public: ", error);
+        this.error.set(`Failed loading loans`);
+      },
     });
   }
 
   private loadInvestedLoans() {
-    if (!this.publicKey) return;
+    if (!this.publicKey()) return;
 
-    this.loanManagementService.getLoansMock(this.publicKey.toString(), 'invested').subscribe({
+    this.loanManagementService.getLoans(this.publicKey()!.toString(), 'invested').subscribe({
       next: (res) => this.investedLoans.set(res),
-      error: (_) => this.error.set(`Failed loading loans`),
+      error: (error) => {
+        console.log("Failed loading invested loans: ", error);
+        this.error.set(`Failed loading loans`);
+      },
     });
   }
 }

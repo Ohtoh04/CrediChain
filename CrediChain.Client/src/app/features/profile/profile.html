@@ -2,20 +2,21 @@
   <mat-toolbar class="card-toolbar"><b>Wallet Profile</b></mat-toolbar>
 
   <div class="profile-content">
-    @if (!publicKey) {
+    @if (!publicKey()) {
     <p>No wallet connected.</p>
-    } @if (publicKey) {
-    <p><strong>Public Key:</strong> {{ publicKey.toString() }}</p>
+    } @if (publicKey()) {
+    <p><strong>Public Key:</strong> {{ publicKey()?.toString() }}</p>
     } @if (error()) {
     <p class="error">{{ error() }}</p>
-    } @if (!publicKey) {
+    } @if (!publicKey()) {
     <button mat-raised-button color="primary" (click)="connectWallet()">Connect Phantom</button>
-    } @if (publicKey) {
+    } @if (publicKey()) {
     <button mat-raised-button color="warn" (click)="disconnectWallet()">Disconnect</button>
     }
   </div>
 </mat-card>
 
+@if(this.publicKey()) {
 <div class="loan-cards-wrapper">
   <!-- Loans Section -->
   <mat-card class="loans-card">
@@ -125,3 +126,4 @@
     </div>
   </mat-card>
 </div>
+}

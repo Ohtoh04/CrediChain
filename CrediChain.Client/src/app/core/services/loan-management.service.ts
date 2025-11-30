@@ -1,242 +1,189 @@
 import { inject, Injectable } from '@angular/core';
-import { CreateLoanRequest, Loan } from '../models/loans';
-import { delay, Observable, of, tap } from 'rxjs';
+import { CreateLoanRequest, Loan, User } from '../models/loans';
+import { delay, from, Observable, of, tap } from 'rxjs';
 import { HttpClient, HttpParams } from '@angular/common/http';
+import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
+import idl from '@assets/idl/credichain.json';
+import { Buffer } from 'buffer';
+import { PhantomWalletService } from './phantom-wallet.service';
+import { BN } from '@coral-xyz/anchor';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LoanManagementService {
-  private baseUrl = 'assets/mock-data/loans.json';
+  private connection = new Connection("https://api.devnet.solana.com");
+  private walletService = inject(PhantomWalletService);
+  private provider = new anchor.AnchorProvider(
+    this.connection,
+    {} as any,
+    anchor.AnchorProvider.defaultOptions()
+  );
+
+  private program = new anchor.Program(
+    idl as anchor.Idl,
+    this.provider
+  );
 
   private readonly httpClient = inject(HttpClient);
 
   getLoanDetails(loanId: string): Observable<Loan | undefined> {
-    const mockLoans: Loan[] = [
-      {
-        id: '1',
-        borrower: {
-          publicKey: '7Z1P6zG7C8oF5dR2tY3uI9pL0qW4eS5xV6bN8mM2kK1jH3gF4d',
-          reputationScore: 85,
-        },
-        amount: 10,
-        interestRate: 5.5,
-        durationDays: 30,
-        fundedAmount: 8,
-        status: 'OPEN',
-        collateral: 'SOL tokens',
-        createdAt: new Date('2024-01-15'),
-        dueDate: new Date('2024-02-15'),
-        investors: [],
-      },
-      {
-        id: '2',
-        borrower: {
-          publicKey: '7Z1P6zG7C8oF5dR2tY3uI9pL0qW4eS5xV6bN8mM2kK1jH3gF4d',
-          reputationScore: 85,
-        },
-        amount: 25,
-        interestRate: 7.2,
-        durationDays: 60,
-        fundedAmount: 25,
-        status: 'FUNDED',
-        collateral: 'NFT collection #123',
-        createdAt: new Date('2024-01-10'),
-        dueDate: new Date('2024-03-10'),
-        investors: [
-          { publicKey: 'A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0', reputationScore: 90 },
-          { publicKey: 'Z9Y8X7W6V5U4T3S2R1Q0P9O8N7M6L5K4J3I2H1G0', reputationScore: 78 },
-        ],
-      },
-      {
-        id: '3',
-        borrower: {
-          publicKey: 'other_user_public_key_1234567890abcdef',
-          reputationScore: 70,
-        },
-        amount: 15,
-        interestRate: 6.0,
-        durationDays: 45,
-        fundedAmount: 12,
-        status: 'OPEN',
-        collateral: 'Real estate token',
-        createdAt: new Date('2024-01-20'),
-        dueDate: new Date('2024-03-05'),
-        investors: [
-          { publicKey: '7Z1P6zG7C8oF5dR2tY3uI9pL0qW4eS5xV6bN8mM2kK1jH3gF4d', reputationScore: 85 },
-        ],
-      },
-      {
-        id: '4',
-        borrower: {
-          publicKey: 'defaulted_user_9876543210zyxwv',
-          reputationScore: 45,
-        },
-        amount: 50,
-        interestRate: 12.5,
-        durationDays: 90,
-        fundedAmount: 50,
-        status: 'DEFAULTED',
-        collateral: 'Car title',
-        createdAt: new Date('2023-11-01'),
-        dueDate: new Date('2024-01-30'),
-        investors: [
-          { publicKey: 'investor_alpha_123456789', reputationScore: 92 },
-          { publicKey: 'investor_beta_987654321', reputationScore: 88 },
-        ],
-      },
-      {
-        id: '5',
-        borrower: {
-          publicKey: 'repaid_user_abcdef123456',
-          reputationScore: 95,
-        },
-        amount: 8,
-        interestRate: 4.5,
-        durationDays: 30,
-        fundedAmount: 8,
-        status: 'REPAID',
-        collateral: 'Gold tokens',
-        createdAt: new Date('2023-12-01'),
-        dueDate: new Date('2023-12-31'),
-        investors: [{ publicKey: 'trusted_investor_xyz789', reputationScore: 96 }],
-      },
-    ];
+    return from(
+      (async () => {
+        try {
+          const loanPubkey = new PublicKey(loanId);
+          const loanAccount = await (this.program.account as any)['Loan'].fetch(loanPubkey);
 
-    const foundLoan = mockLoans.find((loan) => loan.id === loanId);
+          // Normalize account data
+          const borrower = {
+            publicKey: loanAccount.borrower.toBase58(),
+            reputationScore: 0, // Placeholder; you can fetch actual user reputation
+          } as User;
 
-    return of(foundLoan).pipe(
-      delay(800),
-      tap((loan) => {
-        if (loan) {
-          console.log('Loan found:', loan.id);
-        } else {
-          console.log('Loan not found:', loanId);
+          const investors: User[] = (loanAccount.lenders || []).map((pk: any) => ({
+            publicKey: new PublicKey(pk).toBase58(),
+            reputationScore: 0,
+          }));
+
+          return this.mapAnchorLoanToModel(loanAccount, borrower, investors, loanId);
+        } catch (err) {
+          console.error('Failed to fetch loan:', loanId, err);
+          return undefined;
         }
-      })
+      })()
     );
-
-    // return this.httpClient.get<Loan>(`${this.baseUrl}/${loanId}`);
   }
 
   getLoans(
     userPublicKey: string,
     loansType: 'borrowed' | 'invested' | 'all' = 'all'
-  ): Observable<Loan[]> {
-    let requestParameters = new HttpParams()
-      .set('userPublicKey', userPublicKey)
-      .set('loansType', loansType);
+  ): Observable<any[]> {
 
-    return this.httpClient.get<Loan[]>(this.baseUrl, {
-      params: requestParameters,
-    });
+    return from((async () => {
+      const userPk = new PublicKey(userPublicKey);
+      const allLoans = await (this.program.account as any)['loan'].all();
+
+      // Normalize all pubkeys
+      const normalizedLoans = allLoans.map((l: any) => ({
+        ...l,
+        account: {
+          ...l.account,
+          borrower: new PublicKey(l.account.borrower),
+          lenders: l.account.lenders.map((pk: any) => new PublicKey(pk)),
+        }
+      }));
+
+      if (loansType === 'borrowed') {
+        return normalizedLoans.filter((l: any) =>
+          l.account.borrower.toBase58() === userPk.toBase58()
+        );
+      }
+
+      if (loansType === 'invested') {
+        return normalizedLoans.filter((l: any) =>
+          l.account.lenders.some((pk: any) => pk.toBase58() === userPk.toBase58())
+        );
+      }
+
+    })());
   }
 
   getInvestedLoans(userPublicKey: string): Observable<Loan[]> {
-    return new Observable<Loan[]>((observer) => {
-      this.httpClient.get<Loan[]>(this.baseUrl).subscribe((loans) => {
-        const invested = loans.filter((l) =>
-          l.investors?.some((inv) => inv.publicKey === userPublicKey)
-        );
-        observer.next(invested);
-        observer.complete();
-      });
-    });
+    return from((async () => {
+      const userPk = new PublicKey(userPublicKey);
+      const allLoans = await (this.program.account as any)['loan'].all();
+
+      return allLoans.filter((l: any) =>
+        l.account.lenders.some((pk: any) => pk.toBase58() === userPk.toBase58())
+      );
+    })());
   }
 
-  createLoan(loanData: CreateLoanRequest): Observable<Loan> {
-    const mockLoan: Loan = {
-      id: Math.random().toString(36).substr(2, 9),
-      borrower: loanData.borrower,
-      amount: loanData.amount,
-      interestRate: loanData.interestRate,
-      durationDays: loanData.durationDays,
-      fundedAmount: 0,
-      status: 'OPEN',
-      collateral: loanData.collateral,
-      createdAt: new Date(),
-      dueDate: new Date(Date.now() + loanData.durationDays * 24 * 60 * 60 * 1000),
-      investors: [],
+createLoan(loanData: CreateLoanRequest): Observable<Loan> {
+  return from(
+    (async () => {
+      if (!this.walletService.publicKey()) {
+        throw new Error('Wallet not connected');
+      }
+
+      const loanKeypair = Keypair.generate();
+
+      const [escrowPda, escrowBump] = await PublicKey.findProgramAddress(
+        [Buffer.from('escrow'), loanKeypair.publicKey.toBuffer()],
+        this.program.programId
+      );
+
+
+      const totalAmount = new BN(loanData.amount);
+      const interestBps = new BN(Math.floor(loanData.interestRate * 100));
+      const durationSeconds = new BN(loanData.durationDays * 24 * 60 * 60);
+
+      await (this.program.methods as any)
+        .createLoan(totalAmount, interestBps, durationSeconds)
+        .accounts({
+          loan: loanKeypair.publicKey,
+          escrow: escrowPda,
+          borrower: this.walletService.publicKey(),
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([loanKeypair])
+        .rpc();
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + loanData.durationDays);
+
+      const newLoan: Loan = {
+        id: loanKeypair.publicKey.toBase58(),
+        borrower: loanData.borrower,
+        amount: loanData.amount,
+        fundedAmount: 0,
+        interestRate: loanData.interestRate,
+        durationDays: loanData.durationDays,
+        status: 'OPEN',
+        collateral: loanData.collateral,
+        createdAt: new Date(),
+        dueDate,
+        investors: [],
+      };
+
+      console.log('Loan created successfully on-chain:', newLoan);
+
+      return newLoan;
+    })()
+  );
+}
+
+    private mapAnchorLoanToModel(
+    account: any,
+    borrower: User,
+    investors: User[],
+    id: string
+  ): Loan {
+    const now = new Date();
+    const createdAt = new Date((account.start_ts || now.getTime() / 1000) * 1000);
+    const dueDate = new Date((account.due_ts || now.getTime() / 1000) * 1000);
+
+    const statusMap: Record<string, Loan['status']> = {
+      Open: 'OPEN',
+      Funded: 'FUNDED',
+      Repaid: 'REPAID',
     };
 
-    return of(mockLoan).pipe(
-      delay(1000),
-      tap((loan) => console.log('Loan created successfully:', loan))
-    );
+    const status = statusMap[account.status?.[0] ?? 'Open'] ?? 'OPEN';
 
-    // return this.httpClient.post<Loan>(this.baseUrl, loanData);
-  }
-
-  getLoansMock(
-    userPublicKey: string,
-    loansType: 'borrowed' | 'invested' | 'all' = 'all'
-  ): Observable<Loan[]> {
-    const mockLoans: Loan[] = [
-      {
-        id: '1',
-        borrower: { publicKey: userPublicKey, reputationScore: 85 },
-        amount: 10,
-        interestRate: 5.5,
-        durationDays: 30,
-        fundedAmount: 8,
-        status: 'OPEN',
-        collateral: 'SOL tokens',
-        createdAt: new Date('2024-01-15'),
-        dueDate: new Date('2024-02-15'),
-        investors: [],
-      },
-      {
-        id: '2',
-        borrower: { publicKey: userPublicKey, reputationScore: 85 },
-        amount: 25,
-        interestRate: 7.2,
-        durationDays: 60,
-        fundedAmount: 25,
-        status: 'FUNDED',
-        collateral: 'NFT collection',
-        createdAt: new Date('2024-01-10'),
-        dueDate: new Date('2024-03-10'),
-        investors: [
-          { publicKey: 'investor1', reputationScore: 90 },
-          { publicKey: 'investor2', reputationScore: 78 },
-        ],
-      },
-      {
-        id: '3',
-        borrower: { publicKey: 'other_user', reputationScore: 70 },
-        amount: 15,
-        interestRate: 6.0,
-        durationDays: 45,
-        fundedAmount: 12,
-        status: 'OPEN',
-        createdAt: new Date('2024-01-20'),
-        dueDate: new Date('2024-03-05'),
-        investors: [{ publicKey: userPublicKey, reputationScore: 85 }],
-      },
-    ];
-
-    let filteredLoans: Loan[];
-
-    switch (loansType) {
-      case 'borrowed':
-        filteredLoans = mockLoans.filter((l) => l.borrower.publicKey === userPublicKey);
-        break;
-      case 'invested':
-        filteredLoans = mockLoans.filter((l) =>
-          l.investors?.some((inv) => inv.publicKey === userPublicKey)
-        );
-        break;
-      case 'all':
-        filteredLoans = mockLoans.filter(
-          (l) =>
-            l.borrower.publicKey === userPublicKey ||
-            l.investors?.some((inv) => inv.publicKey === userPublicKey)
-        );
-        break;
-      default:
-        filteredLoans = mockLoans;
-    }
-
-    return of(filteredLoans).pipe(delay(300));
+    return {
+      id,
+      borrower,
+      investors,
+      amount: account.total_amount,
+      fundedAmount: account.funded_amount,
+      interestRate: account.interest_bps / 100,
+      durationDays: Math.ceil(account.duration / (24 * 3600)),
+      status,
+      collateral: undefined,
+      createdAt,
+      dueDate,
+    };
   }
 }

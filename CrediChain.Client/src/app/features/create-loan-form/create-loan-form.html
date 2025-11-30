@@ -1,3 +1,4 @@
+@if(walletService.publicKey()) {
 <div class="card-wrapper">
   <mat-card class="create-loan-card">
     <mat-toolbar class="card-toolbar"><b>Create New Loan</b></mat-toolbar>
@@ -72,3 +73,8 @@
     </form>
   </mat-card>
 </div>
+
+} @else {
+<p>Please, connect the wallet</p>
+<p>{{ publicKey() }}asdasd</p>
+}

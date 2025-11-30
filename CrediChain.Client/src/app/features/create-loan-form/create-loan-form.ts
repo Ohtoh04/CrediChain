@@ -26,12 +26,12 @@ import { PhantomWalletService } from 'app/core/services/phantom-wallet.service';
   styleUrl: './create-loan-form.scss',
 })
 export class CreateLoanForm {
-  private readonly walletService = inject(PhantomWalletService);
+  walletService = inject(PhantomWalletService);
   private readonly loanManagementService = inject(LoanManagementService);
   private readonly snackBar = inject(MatSnackBar);
   
   error = signal<string | null>(null);
-  publicKey: PublicKey | null = new PublicKey('11111111111111111111111111111111');
+  publicKey = this.walletService.publicKey;
   loanForm: FormGroup;
   creatingLoan = false;
 
@@ -47,7 +47,7 @@ export class CreateLoanForm {
   }
 
   async createLoan() {
-    if (!this.publicKey || !this.loanForm.valid) return;
+    if (!this.publicKey() || !this.loanForm.valid) return;
 
     this.creatingLoan = true;
     this.error.set(null);
@@ -59,7 +59,7 @@ export class CreateLoanForm {
         durationDays: this.loanForm.value.durationDays,
         collateral: this.loanForm.value.collateral,
         borrower: {
-          publicKey: this.publicKey.toString(),
+          publicKey: this.publicKey()!.toString(),
           reputationScore: 85
         }
       };

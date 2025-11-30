@@ -1,5 +1,5 @@
 // loans-list.component.ts
-import { Component, inject, OnInit, signal, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -52,7 +52,7 @@ export class LoansList implements OnInit {
   currentPage = 1;
   pageSize = 9;
 
-  publicKey = new PublicKey('11111111111111111111111111111111');//this.walletService.publicKey();
+  publicKey = this.walletService.publicKey;
 
   filteredLoans = computed(() => {
     let filtered = this.loans();
@@ -90,9 +90,16 @@ export class LoansList implements OnInit {
     return Math.ceil(this.loans().length / this.pageSize);
   });
 
+  constructor() {
+    effect(() => {
+      this.loadLoans();
+
+    });
+  }
+
   ngOnInit() {
     this.loadLoans();
-    
+
     this.statusFilter.valueChanges.subscribe(() => {
       this.currentPage = 1;
     });
@@ -103,10 +110,14 @@ export class LoansList implements OnInit {
   }
 
   loadLoans() {
+    console.log("good1");
+    if(!this.publicKey()) return;
+    console.log("good1");
+
     this.loading.set(true);
     this.error.set(null);
 
-    this.loanService.getLoansMock(this.publicKey?.toString() ?? "").subscribe({
+    this.loanService.getLoans(this.publicKey()!.toString()).subscribe({
       next: (loans) => {
         this.loans.set(loans);
         this.loading.set(false);

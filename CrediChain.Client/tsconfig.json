@@ -15,8 +15,10 @@
     "target": "ES2022",
     "module": "preserve",
     "baseUrl": "./src",
+    "esModuleInterop": true,
     "paths": {
-      "@shared/*": ["app/shared/*"]
+      "@shared/*": ["app/shared/*"],
+      "@assets/*": ["assets/*"]
     }
   },
   "angularCompilerOptions": {
