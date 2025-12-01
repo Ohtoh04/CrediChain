@@ -54,7 +54,7 @@
           </mat-card-content>
 
           <mat-card-actions>
-            @if (loan.status === 'OPEN') {
+            @if (loan.status === 'OPEN' && loan.borrower.publicKey != publicKey()?.toString()) {
             <button mat-button color="primary">Fund Loan</button>
             }
             <button mat-button color="accent" [routerLink]="['/loan', loan.id]">

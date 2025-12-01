@@ -1,5 +1,5 @@
 {
-  "address": "FxkNMBmmmF6phc5uUYKzrbmN9SVU6C7cKZi94zoKQRuL",
+  "address": "7Tauw2vt94y5Eb9Vfn4StEuBm3A9KsvDJK3wzxVELpGG",
   "metadata": {
     "name": "credichain",
     "version": "0.1.0",
@@ -23,7 +23,23 @@
         {
           "name": "loan",
           "writable": true,
-          "signer": true
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  97,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "borrower"
+              }
+            ]
+          }
         },
         {
           "name": "escrow",
@@ -249,9 +265,6 @@
   "types": [
     {
       "name": "Escrow",
-      "docs": [
-        "PDA with no data — used only to hold lamports"
-      ],
       "type": {
         "kind": "struct",
         "fields": []
@@ -333,7 +346,10 @@
             "name": "Funded"
           },
           {
-            "name": "Repaid"
+            "name": "RepaidOnTime"
+          },
+          {
+            "name": "RepaidLate"
           }
         ]
       }

@@ -7,17 +7,21 @@ import * as anchor from '@coral-xyz/anchor';
 import idl from '@assets/idl/credichain.json';
 import { Buffer } from 'buffer';
 import { PhantomWalletService } from './phantom-wallet.service';
-import { BN } from '@coral-xyz/anchor';
+import { BN, Program } from '@coral-xyz/anchor';
+import { T } from '@angular/cdk/keycodes';
+
+export const LAMPORTS_PER_SOL = 1_000_000_000;
+
 
 @Injectable({
   providedIn: 'root',
 })
 export class LoanManagementService {
-  private connection = new Connection("https://api.devnet.solana.com");
+  private connection = new Connection("http://127.0.0.1:8899");
   private walletService = inject(PhantomWalletService);
   private provider = new anchor.AnchorProvider(
     this.connection,
-    {} as any,
+    this.walletService.getWallet(),
     anchor.AnchorProvider.defaultOptions()
   );
 
@@ -26,66 +30,106 @@ export class LoanManagementService {
     this.provider
   );
 
-  private readonly httpClient = inject(HttpClient);
+  getProvider() {
+    return new anchor.AnchorProvider(
+      this.connection,
+      this.walletService.getWallet(),
+      anchor.AnchorProvider.defaultOptions()
+    );
+  }
 
-  getLoanDetails(loanId: string): Observable<Loan | undefined> {
+  private getProgram() {
+    return new anchor.Program(
+      idl as anchor.Idl,
+      this.getProvider()
+    );
+  }
+
+
+  getLoanDetails(id: string): Observable<Loan | undefined> {
     return from(
       (async () => {
         try {
-          const loanPubkey = new PublicKey(loanId);
-          const loanAccount = await (this.program.account as any)['Loan'].fetch(loanPubkey);
 
-          // Normalize account data
-          const borrower = {
-            publicKey: loanAccount.borrower.toBase58(),
-            reputationScore: 0, // Placeholder; you can fetch actual user reputation
-          } as User;
+          // Note: Anchor account names are lowercase by convention ("loan", not "Loan")
+          const loanAccount = await (this.program.account as any)['loan'].fetch(id);
 
-          const investors: User[] = (loanAccount.lenders || []).map((pk: any) => ({
-            publicKey: new PublicKey(pk).toBase58(),
-            reputationScore: 0,
-          }));
+          // Build borrower User object
+          const borrower: User = {
+            publicKey: new PublicKey(loanAccount.borrower).toString(),
+            reputationScore: 50, // Placeholder; upgrade if you have real scoring
+          };
 
-          return this.mapAnchorLoanToModel(loanAccount, borrower, investors, loanId);
+          // Build investor list
+          const investors: User[] = (loanAccount.lenders || []).map(
+            (pk: any) => ({
+              publicKey: new PublicKey(pk),
+              reputationScore: 50,
+            })
+          );
+
+          // Use the unified mapper
+          return this.mapAnchorLoanToModel(
+            loanAccount,
+            borrower,
+            investors,
+            id
+          );
         } catch (err) {
-          console.error('Failed to fetch loan:', loanId, err);
+          console.error('Failed to fetch loan:', id, err);
           return undefined;
         }
       })()
     );
   }
 
+
   getLoans(
     userPublicKey: string,
     loansType: 'borrowed' | 'invested' | 'all' = 'all'
-  ): Observable<any[]> {
+  ): Observable<Loan[]> {
 
     return from((async () => {
       const userPk = new PublicKey(userPublicKey);
+
       const allLoans = await (this.program.account as any)['loan'].all();
 
-      // Normalize all pubkeys
-      const normalizedLoans = allLoans.map((l: any) => ({
-        ...l,
-        account: {
-          ...l.account,
-          borrower: new PublicKey(l.account.borrower),
-          lenders: l.account.lenders.map((pk: any) => new PublicKey(pk)),
-        }
-      }));
+      const normalizedLoans: Loan[] = allLoans.map((l: any) => {
+        const account = l.account ?? l;
+
+        // Build borrower model
+        const borrower: User = {
+          publicKey: new PublicKey(account.borrower).toString(),
+          reputationScore: 50
+        };
+
+        // Build investors list
+        const investors: User[] = account.lenders.map((pk: any) => ({
+          publicKey: new PublicKey(pk),
+          reputationScore: 50
+        }));
+
+        return this.mapAnchorLoanToModel(
+          account,
+          borrower,
+          investors,
+          l.publicKey.toBase58()
+        );
+      });
 
       if (loansType === 'borrowed') {
-        return normalizedLoans.filter((l: any) =>
-          l.account.borrower.toBase58() === userPk.toBase58()
+        return normalizedLoans.filter(l =>
+          l.borrower.publicKey === userPk.toString()
         );
       }
 
       if (loansType === 'invested') {
-        return normalizedLoans.filter((l: any) =>
-          l.account.lenders.some((pk: any) => pk.toBase58() === userPk.toBase58())
+        return normalizedLoans.filter(l =>
+          l.investors?.some(inv => inv.publicKey === userPk.toString())
         );
       }
 
+      return normalizedLoans;
     })());
   }
 
@@ -100,90 +144,92 @@ export class LoanManagementService {
     })());
   }
 
-createLoan(loanData: CreateLoanRequest): Observable<Loan> {
-  return from(
-    (async () => {
-      if (!this.walletService.publicKey()) {
-        throw new Error('Wallet not connected');
-      }
+  createLoan(loanData: CreateLoanRequest): Observable<void> {
+    return from((async () => {
+      const program = this.getProgram();
+      const borrowerPk = this.walletService.publicKey()!;
 
-      const loanKeypair = Keypair.generate();
+      const loanId = Date.now(); 
 
-      const [escrowPda, escrowBump] = await PublicKey.findProgramAddress(
-        [Buffer.from('escrow'), loanKeypair.publicKey.toBuffer()],
-        this.program.programId
+      // Derive loan PDA
+      const [loanPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("loan"), borrowerPk.toBuffer(), Buffer.from(loanId.toString())],
+        program.programId
       );
 
+      // Derive escrow PDA
+      const [escrowPda] = PublicKey.findProgramAddressSync(
+        [Buffer.from("escrow"), loanPda.toBuffer()],
+        program.programId
+      );
 
       const totalAmount = new BN(loanData.amount);
-      const interestBps = new BN(Math.floor(loanData.interestRate * 100));
+      const interestBps = new BN(Math.floor(loanData.interestRate));
       const durationSeconds = new BN(loanData.durationDays * 24 * 60 * 60);
 
-      await (this.program.methods as any)
-        .createLoan(totalAmount, interestBps, durationSeconds)
+      await (program.methods as any).createLoan(loanId, totalAmount, interestBps, durationSeconds)
         .accounts({
-          loan: loanKeypair.publicKey,
+          loan: loanPda,
           escrow: escrowPda,
-          borrower: this.walletService.publicKey(),
-          systemProgram: SystemProgram.programId,
+          borrower: borrowerPk,
+          systemProgram: anchor.web3.SystemProgram.programId,
         })
-        .signers([loanKeypair])
         .rpc();
+    })());
+  }
 
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + loanData.durationDays);
+  async fundLoan(borrowerPk: PublicKey, loanKey: string, amount: number) {
+    const program = this.getProgram();
 
-      const newLoan: Loan = {
-        id: loanKeypair.publicKey.toBase58(),
-        borrower: loanData.borrower,
-        amount: loanData.amount,
-        fundedAmount: 0,
-        interestRate: loanData.interestRate,
-        durationDays: loanData.durationDays,
-        status: 'OPEN',
-        collateral: loanData.collateral,
-        createdAt: new Date(),
-        dueDate,
-        investors: [],
-      };
+    // Derive loan PDA
+    const [loanPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("loan"), borrowerPk.toBuffer(), Buffer.from(loanKey.toString())],
+      program.programId
+    );
 
-      console.log('Loan created successfully on-chain:', newLoan);
+    // Derive escrow PDA
+    const [escrowPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"), loanPda.toBuffer()],
+      program.programId
+    );
 
-      return newLoan;
-    })()
-  );
-}
+    await (program.methods as any).fundLoan(new BN(amount))
+      .accounts({
+        loan: loanPda,
+        escrow: escrowPda,
+        lender: this.walletService.publicKey()!,
+        borrower: borrowerPk,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+  }
 
-    private mapAnchorLoanToModel(
+  private mapAnchorLoanToModel(
     account: any,
     borrower: User,
     investors: User[],
     id: string
   ): Loan {
-    const now = new Date();
-    const createdAt = new Date((account.start_ts || now.getTime() / 1000) * 1000);
-    const dueDate = new Date((account.due_ts || now.getTime() / 1000) * 1000);
+    const createdAt = new Date(account.startTs.toNumber() * 1000);
+    const dueDate = new Date(account.dueTs.toNumber() * 1000);
 
-    const statusMap: Record<string, Loan['status']> = {
-      Open: 'OPEN',
-      Funded: 'FUNDED',
-      Repaid: 'REPAID',
-    };
-
-    const status = statusMap[account.status?.[0] ?? 'Open'] ?? 'OPEN';
+    const status = Object.keys(account.status)[0].toUpperCase() as Loan['status'];
 
     return {
       id,
       borrower,
       investors,
-      amount: account.total_amount,
-      fundedAmount: account.funded_amount,
-      interestRate: account.interest_bps / 100,
-      durationDays: Math.ceil(account.duration / (24 * 3600)),
+      amount: account.totalAmount.toNumber(),
+      fundedAmount: typeof account.fundedAmount === 'string'
+        ? parseInt(account.fundedAmount, 16)
+        : account.fundedAmount.toNumber(),
+      interestRate: account.interestBps,  // same as getLoans
+      durationDays: account.duration / 86400,
       status,
       collateral: undefined,
       createdAt,
       dueDate,
     };
   }
+
 }

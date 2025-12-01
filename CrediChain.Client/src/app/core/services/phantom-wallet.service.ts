@@ -1,16 +1,16 @@
 import { Injectable, signal } from '@angular/core';
 import { PublicKey } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
 
-
-interface PhantomProvider {
-  isPhantom?: boolean;
-  publicKey?: PublicKey | null;
-
-  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: PublicKey }>;
+export interface PhantomProvider {
+  isPhantom: boolean;
+  publicKey: PublicKey | null;
+  connect: () => Promise<{ publicKey: PublicKey }>;
   disconnect: () => Promise<void>;
-
-  on: (event: string, handler: (...args: any[]) => void) => void;
-  request: (method: string, params?: any) => Promise<any>;
+  on: (event: string, handler: any) => void;
+  request?: (args: any) => Promise<any>;
+  signTransaction?: (tx: anchor.web3.Transaction) => Promise<anchor.web3.Transaction>;
+  signAllTransactions?: (txs: anchor.web3.Transaction[]) => Promise<anchor.web3.Transaction[]>;
 }
 
 function getPhantomProvider(): PhantomProvider | null {
@@ -63,5 +63,16 @@ export class PhantomWalletService {
 
   getProvider(): PhantomProvider | null {
     return this.provider;
+  }
+
+
+  getWallet(): any {
+    if (!this.provider || !this.publicKey()) return null;
+
+    return {
+      publicKey: this.publicKey()!,
+      signTransaction: this.provider.signTransaction!.bind(this.provider) as any,
+      signAllTransactions: this.provider.signAllTransactions!.bind(this.provider) as any,
+    };
   }
 }

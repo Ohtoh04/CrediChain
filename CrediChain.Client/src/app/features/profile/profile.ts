@@ -15,7 +15,7 @@ import { RouterLink } from '@angular/router';
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
-export class MyProfile {
+export class MyProfile implements OnInit {
   private readonly walletService = inject(PhantomWalletService);
   private readonly loanManagementService = inject(LoanManagementService);
 
@@ -30,6 +30,11 @@ export class MyProfile {
       this.loadBorrowedLoans();
       this.loadInvestedLoans();
     });
+  }
+
+  ngOnInit(): void {
+      this.loadBorrowedLoans();
+      this.loadInvestedLoans();
   }
 
   async connectWallet() {
@@ -52,7 +57,6 @@ export class MyProfile {
       next: (res) => this.borrowedLoans.set(res),
       error: (error) => {
         console.log("Failed loading borrowed loans: ", error);
-        console.log("Failed loading borrowed loans public: ", error);
         this.error.set(`Failed loading loans`);
       },
     });

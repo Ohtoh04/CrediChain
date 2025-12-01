@@ -17,6 +17,7 @@ import { PhantomWalletService } from 'app/core/services/phantom-wallet.service';
 import { Loan } from 'app/core/models/loans';
 import { DatePipe } from '@angular/common';
 import { PublicKey } from '@solana/web3.js';
+import { FundModal } from '../fund-modal/fund-modal';
 
 @Component({
   selector: 'app-loans-list',
@@ -110,9 +111,7 @@ export class LoansList implements OnInit {
   }
 
   loadLoans() {
-    console.log("good1");
     if(!this.publicKey()) return;
-    console.log("good1");
 
     this.loading.set(true);
     this.error.set(null);
@@ -131,8 +130,15 @@ export class LoansList implements OnInit {
   }
 
   fundLoan(loan: Loan) {
-    // TODO: Implement fund loan dialog
-    console.log('Funding loan:', loan.id);
+    const availableAmount = loan.amount - loan.fundedAmount;
+    
+    const dialogRef = this.dialog.open(FundModal, {
+      width: '500px',
+      data: { 
+        loan,
+        availableAmount
+      }
+    });
   }
 
   repayLoan(loan: Loan) {
