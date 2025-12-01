@@ -1,0 +1,111 @@
+<!-- Repay-loan-dialog.component.html -->
+<h2 mat-dialog-title>Repay Loan</h2>
+
+<mat-dialog-content class="Repay-dialog-content">
+  <div class="loan-info">
+    <h3>Loan #{{ data.loan.id.slice(0, 8) }}</h3>
+    <div class="loan-details">
+      <div class="detail-item">
+        <span class="label">Amount:</span>
+        <span class="value">{{ data.loan.amount }} SOL</span>
+      </div>
+      <div class="detail-item">
+        <span class="label">Interest Rate:</span>
+        <span class="value">{{ data.loan.interestRate }}% APR</span>
+      </div>
+      <div class="detail-item">
+        <span class="label">Duration:</span>
+        <span class="value">{{ data.loan.durationDays }} days</span>
+      </div>
+      <div class="detail-item">
+        <span class="label">Already Funded:</span>
+        <span class="value">{{ data.loan.fundedAmount }} SOL</span>
+      </div>
+      <div class="detail-item">
+        <span class="label">Remaining:</span>
+        <span class="value highlight">{{ data.availableAmount }} SOL</span>
+      </div>
+    </div>
+  </div>
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Amount to Repay (SOL)</mat-label>
+    <input
+      matInput
+      type="number"
+      [formControl]="amountControl"
+      [min]="0.1"
+      [max]="data.availableAmount"
+      step="0.1"
+      placeholder="Enter amount"
+    />
+    <span matSuffix>SOL</span>
+
+    @if (amountControl.hasError('required')) {
+    <mat-error>Amount is required</mat-error>
+    } @if (amountControl.hasError('min')) {
+    <mat-error>Minimum amount is 0.1 SOL</mat-error>
+    } @if (amountControl.hasError('max')) {
+    <mat-error>Cannot exceed {{ data.availableAmount }} SOL</mat-error>
+    }
+  </mat-form-field>
+
+  <!-- Repaying Summary -->
+  @if (amountControl.valid && amountControl.value) {
+  <mat-card class="summary-card">
+    <mat-card-header>
+      <mat-card-title>Repaying Summary</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="summary-details">
+        <div class="summary-item">
+          <span>Your Investment:</span>
+          <span class="amount">{{ amountControl.value }} SOL</span>
+        </div>
+        <div class="summary-item">
+          <span>Expected Return:</span>
+          <span class="amount"> {{ calculateExpectedReturn(amountControl.value) }} SOL </span>
+        </div>
+        <div class="summary-item">
+          <span>Interest Earned:</span>
+          <span class="amount profit"> +{{ calculateInterest(amountControl.value) }} SOL </span>
+        </div>
+        <div class="summary-item">
+          <span>Maturity Date:</span>
+          <span>{{ data.loan.dueDate | date : 'mediumDate' }}</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+  }
+
+  <!-- Wallet Info -->
+  <mat-card class="wallet-card" *ngIf="publicKey">
+    <mat-card-header>
+      <mat-card-title>Wallet Information</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="wallet-info">
+        <mat-icon>account_balance_wallet</mat-icon>
+        <div class="wallet-details">
+          <span class="public-key">{{ publicKey.toString() | truncate : 20 }}</span>
+          <span class="balance">Balance: {{ walletBalance }} SOL</span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button
+    mat-raised-button
+    color="primary"
+    (click)="onRepay()"
+    [disabled]="!amountControl.valid || repaying"
+  >
+    @if (repaying) {
+    <mat-spinner diameter="20" class="spinner"></mat-spinner>
+    Repaying... } @else { Confirm Repaying }
+  </button>
+</mat-dialog-actions>

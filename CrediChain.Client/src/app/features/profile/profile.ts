@@ -8,6 +8,9 @@ import { LoanManagementService } from 'app/core/services/loan-management.service
 import { Loan } from 'app/core/models/loans';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { FundModal } from '../fund-modal/fund-modal';
+import { RepayModal } from '../repay-modal/repay-modal';
 
 @Component({
   selector: 'app-profile',
@@ -18,6 +21,7 @@ import { RouterLink } from '@angular/router';
 export class MyProfile implements OnInit {
   private readonly walletService = inject(PhantomWalletService);
   private readonly loanManagementService = inject(LoanManagementService);
+  private dialog = inject(MatDialog);
 
   publicKey = this.walletService.publicKey;
   error = signal<string | null>(null);
@@ -73,4 +77,28 @@ export class MyProfile implements OnInit {
       },
     });
   }
+
+    fundLoan(loan: Loan) {
+      const availableAmount = loan.amount - loan.fundedAmount;
+      
+      const dialogRef = this.dialog.open(FundModal, {
+        width: '500px',
+        data: { 
+          loan,
+          availableAmount
+        }
+      });
+    }
+  
+    repayLoan(loan: Loan) {
+      const availableAmount = loan.amount - loan.fundedAmount;
+      
+      const dialogRef = this.dialog.open(RepayModal, {
+        width: '500px',
+        data: { 
+          loan,
+          availableAmount
+        }
+      });
+    }
 }

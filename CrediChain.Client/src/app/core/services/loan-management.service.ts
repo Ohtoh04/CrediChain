@@ -149,17 +149,11 @@ export class LoanManagementService {
       const program = this.getProgram();
       const borrowerPk = this.walletService.publicKey()!;
 
-      const loanId = Date.now(); 
-
-      // Derive loan PDA
-      const [loanPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("loan"), borrowerPk.toBuffer(), Buffer.from(loanId.toString())],
-        program.programId
-      );
+      const loan = anchor.web3.Keypair.generate();
 
       // Derive escrow PDA
-      const [escrowPda] = PublicKey.findProgramAddressSync(
-        [Buffer.from("escrow"), loanPda.toBuffer()],
+      const [escrowPda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("escrow"), loan.publicKey.toBuffer()],
         program.programId
       );
 
@@ -167,35 +161,37 @@ export class LoanManagementService {
       const interestBps = new BN(Math.floor(loanData.interestRate));
       const durationSeconds = new BN(loanData.durationDays * 24 * 60 * 60);
 
-      await (program.methods as any).createLoan(loanId, totalAmount, interestBps, durationSeconds)
+      await (program.methods as any).createLoan(totalAmount, interestBps, durationSeconds)
         .accounts({
-          loan: loanPda,
+          loan: loan.publicKey,
           escrow: escrowPda,
           borrower: borrowerPk,
           systemProgram: anchor.web3.SystemProgram.programId,
         })
+        .signers([loan])
         .rpc();
     })());
   }
 
   async fundLoan(borrowerPk: PublicKey, loanKey: string, amount: number) {
     const program = this.getProgram();
+    const loanPublicKey = new PublicKey(loanKey);
 
     // Derive loan PDA
     const [loanPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("loan"), borrowerPk.toBuffer(), Buffer.from(loanKey.toString())],
+      [Buffer.from("loan"), loanPublicKey.toBuffer()],
       program.programId
     );
 
     // Derive escrow PDA
-    const [escrowPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("escrow"), loanPda.toBuffer()],
+    const [escrowPda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"), loanPublicKey.toBuffer()],
       program.programId
     );
 
     await (program.methods as any).fundLoan(new BN(amount))
       .accounts({
-        loan: loanPda,
+        loan: loanPublicKey,
         escrow: escrowPda,
         lender: this.walletService.publicKey()!,
         borrower: borrowerPk,
@@ -203,6 +199,33 @@ export class LoanManagementService {
       })
       .rpc();
   }
+
+  async repayLoan(loanKey: string, amount: number) {
+    const program = this.getProgram();
+    const loanPublicKey = new PublicKey(loanKey);
+
+    // Derive loan PDA
+    const [loanPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("loan"), loanPublicKey.toBuffer()],
+      program.programId
+    );
+
+    // Derive escrow PDA
+    const [escrowPda, bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("escrow"), loanPublicKey.toBuffer()],
+      program.programId
+    );
+
+    await (program.methods as any).repayLoan(new BN(amount))
+      .accounts({
+        loan: loanPda,
+        escrow: escrowPda,
+        borrower: this.walletService.publicKey(),
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .rpc();
+  }
+
 
   private mapAnchorLoanToModel(
     account: any,

@@ -33,7 +33,7 @@
     <p>{{ error() }}</p>
     <button mat-raised-button color="primary" (click)="loadLoans()">Try Again</button>
   </div>
-  } @if (!loading() && !error()) {
+  } @if (!loading() && !error() && loans().length ==0) {
   <div class="empty-state">
     <mat-icon>:/</mat-icon>
     <h3>No loans found</h3>
